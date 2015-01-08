@@ -2,6 +2,7 @@
 
 import os,sys
 import re,tempfile
+import sqlite3
 sys.path.append("./jamaal-re-tools/tsron")
 from libtsron import Tsron 
 
@@ -15,13 +16,27 @@ def addToDB(filepath):
     f=open(filepath)
     content=f.read()
     matches=re.findall(contentRegex,content,re.DOTALL)
-    srcInfo=[matches[0][0],'']
-    dstInfo=[matches[1][0],'']
+    ip = re.findall('('+IR+')',matches[0][0])
+    srcInfo=[ip[0],'']
+    dstInfo=[ip[1],'']
     for mat in matches:
-        if mat[0]==srcInfo[0]:
+        if mat[0] == matches[0][0]:
             srcInfo[1] = srcInfo[1] + mat[1]
         else:
             dstInfo[1] = dstInfo[1] + mat[1]
+    cur.execute('''SELECT SRCNUM FROM SRCHOST WHERE SRCIP = ?''',[srcInfo[0]]);
+    srcNum=cur.fetchone()
+    if srcNum is None:
+        cur.execute('''INSERT INTO SRCHOST(SRCIP) VALUES(?)''',[srcInfo[0]]);
+        cur.execute('''SELECT SRCNUM FROM SRCHOST WHERE SRCIP = ?''',[srcInfo[0]]);
+        srcNum=cur.fetchone()
+    cur.execute('''SELECT DSTNUM FROM DSTHOST WHERE DSTIP = ?''',[dstInfo[0]]);
+    dstNum=cur.fetchone()
+    if dstNum is None:
+        cur.execute('''INSERT INTO DSTHOST(DSTIP) VALUES(?)''',[dstInfo[0]]);
+        cur.execute('''SELECT DSTNUM FROM DSTHOST WHERE DSTIP = ?''',[dstInfo[0]]);
+        dstNum=cur.fetchone()
+    cur.execute('''INSERT INTO STREAM VALUES(NULL,?,?,NULL,?,?)''',[srcNum[0],dstNum[0],sqlite3.Binary(srcInfo[1]),sqlite3.Binary(dstInfo[1])]);
 
 tmpdir = tempfile.mkdtemp()
 
@@ -39,7 +54,11 @@ targs = {
 streamObj=Tsron(**targs) # // create instance of Tsron 
 x = streamObj.TCP()      # // return TCP stream from PCAP to var x 
 
-print tmpdir  # // print the raw ordered TCP data :D 
+conn = sqlite3.connect('data.db');
+cur = conn.cursor()
+
+#print tmpdir  # // print the raw ordered TCP data :D 
 
 for connfile in os.listdir(tmpdir):
     addToDB(os.path.join(tmpdir,connfile))
+conn.commit()
