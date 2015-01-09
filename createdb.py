@@ -2,6 +2,7 @@
 
 import os,sys
 import re,tempfile
+import dpkt
 import sqlite3
 sys.path.append("./jamaal-re-tools/tsron")
 from libtsron import Tsron 
@@ -15,6 +16,7 @@ contentRegex = r'(?=<--__=('+SR+r')=__-->'+header+'(.*?)(?=<--__=('+SR+r')=__-->
 def addToDB(filepath):
     f=open(filepath)
     content=f.read()
+    insDic = dict()
     matches=re.findall(contentRegex,content,re.DOTALL)
     ip = re.findall('('+IR+')',matches[0][0])
     srcInfo=[ip[0],'']
@@ -24,19 +26,30 @@ def addToDB(filepath):
             srcInfo[1] = srcInfo[1] + mat[1]
         else:
             dstInfo[1] = dstInfo[1] + mat[1]
+    try:
+        dpkt.http.Request(srcInfo[1])
+        dpkt.http.Response(dstInfo[1])
+    except:
+        pass
     cur.execute('''SELECT SRCNUM FROM SRCHOST WHERE SRCIP = ?''',[srcInfo[0]]);
-    srcNum=cur.fetchone()
-    if srcNum is None:
+    try:
+        srcNum=cur.fetchone()[0]
+    except TypeError:
         cur.execute('''INSERT INTO SRCHOST(SRCIP) VALUES(?)''',[srcInfo[0]]);
-        cur.execute('''SELECT SRCNUM FROM SRCHOST WHERE SRCIP = ?''',[srcInfo[0]]);
-        srcNum=cur.fetchone()
+        srcNum=cur.lastrowid
     cur.execute('''SELECT DSTNUM FROM DSTHOST WHERE DSTIP = ?''',[dstInfo[0]]);
-    dstNum=cur.fetchone()
-    if dstNum is None:
+    try:
+        dstNum=cur.fetchone()[0]
+    except TypeError:
         cur.execute('''INSERT INTO DSTHOST(DSTIP) VALUES(?)''',[dstInfo[0]]);
-        cur.execute('''SELECT DSTNUM FROM DSTHOST WHERE DSTIP = ?''',[dstInfo[0]]);
-        dstNum=cur.fetchone()
-    cur.execute('''INSERT INTO STREAM VALUES(NULL,?,?,NULL,?,?)''',[srcNum[0],dstNum[0],sqlite3.Binary(srcInfo[1]),sqlite3.Binary(dstInfo[1])]);
+        dstNum=cur.lastrowid
+    http = dpkt.http.Request(srcInfo[1])
+    for attr in http.headers:
+        if attr not in headerAttr:
+            cur.execute('''ALTER TABLE STREAM ADD ''' + attr.replace('-','_') + ''' CHAR(100)''')
+            headerAttr.append(attr)
+
+    #cur.execute('''INSERT INTO STREAM VALUES(NULL,?,?,NULL,?,?)''',[srcNum,dstNum,sqlite3.Binary(srcInfo[1]),sqlite3.Binary(dstInfo[1])]);
 
 tmpdir = tempfile.mkdtemp()
 
@@ -54,10 +67,15 @@ targs = {
 streamObj=Tsron(**targs) # // create instance of Tsron 
 x = streamObj.TCP()      # // return TCP stream from PCAP to var x 
 
-conn = sqlite3.connect('data.db');
+conn = sqlite3.connect('data.db')
+conn.row_factory = sqlite3.Row
 cur = conn.cursor()
 
-#print tmpdir  # // print the raw ordered TCP data :D 
+cur.execute('select * from stream')
+try:
+    headerAttr = cur.fetchone().keys()
+except AttributeError:
+    headerAttr = ['ID','SRCNUM','DSTNUM','DESCRIPTION','SRCDATA','DSTDATA']
 
 for connfile in os.listdir(tmpdir):
     addToDB(os.path.join(tmpdir,connfile))
