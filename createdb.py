@@ -4,6 +4,7 @@ import os,sys
 import re,tempfile
 import gzip
 from StringIO import StringIO
+import magic
 import dpkt
 import sqlite3
 sys.path.append("./jamaal-re-tools/tsron")
@@ -48,6 +49,7 @@ def addToDB(filepath):
                     buf = StringIO(http.body)
                     f = gzip.GzipFile(fileobj=buf)
                     http.body = f.read()
+                toIns['FILETYPE'] = mag.buffer(http.body)
             for attr in http.headers:
                 if attr not in headerAttr[hostType]:
                     cur.execute('''INSERT INTO '''+t+'''HEADER (COLUMNATTR) VALUES(?)''',[attr])
@@ -69,6 +71,8 @@ def addToDB(filepath):
         pdb.set_trace()
 
 tmpdir = tempfile.mkdtemp()
+mag = magic.open(magic.MAGIC_NONE)
+mag.load()
 
 # // targs 
 targs = {
