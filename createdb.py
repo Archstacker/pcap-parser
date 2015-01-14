@@ -38,8 +38,10 @@ def addToDB(filepath):
         try:
             if(hostType=='src'):
                 http = dpkt.http.Request(host[hostType]['data'])
+                toIns['SRCDESCRIPTION'] = http.method+' http://'+http.headers['host']+http.uri
             if(hostType=='dst'):
                 http = dpkt.http.Response(host[hostType]['data'])
+                toIns['DSTdESCRIPTION'] = 'HTTP/'+' '.join([http.version,http.status,http.reason])
             for attr in http.headers:
                 if attr not in headerAttr[hostType]:
                     cur.execute('''INSERT INTO '''+t+'''HEADER (COLUMNATTR) VALUES(?)''',[attr])
@@ -48,11 +50,8 @@ def addToDB(filepath):
                     cur.execute('''ALTER TABLE STREAM ADD '''+t+'''HEADER'''+str(colNum)+''' TEXT''') 
                 toIns[t+'HEADER'+str(headerAttr[hostType][attr])]=''.join(http.headers[attr])
             toIns[t+'BODY']=sqlite3.Binary(http.body)
-        except:
-            try:
-                toIns[hostType+'Data'] = sqlite3.Binary(host[hostType]['data'])
-            except:
-                toIns[hostType+'Data'] = ''
+        except dpkt.dpkt.UnpackError:
+            toIns[hostType+'Data'] = sqlite3.Binary(host[hostType]['data'])
 
     columns = ','.join(toIns.keys())
     placeholders = ','.join('?' * len(toIns))
