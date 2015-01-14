@@ -2,6 +2,8 @@
 
 import os,sys
 import re,tempfile
+import gzip
+from StringIO import StringIO
 import dpkt
 import sqlite3
 sys.path.append("./jamaal-re-tools/tsron")
@@ -42,6 +44,10 @@ def addToDB(filepath):
             if(hostType=='dst'):
                 http = dpkt.http.Response(host[hostType]['data'])
                 toIns['DSTdESCRIPTION'] = 'HTTP/'+' '.join([http.version,http.status,http.reason])
+                if "content-encoding" in http.headers and http.headers["content-encoding"] == "gzip":
+                    buf = StringIO(http.body)
+                    f = gzip.GzipFile(fileobj=buf)
+                    http.body = f.read()
             for attr in http.headers:
                 if attr not in headerAttr[hostType]:
                     cur.execute('''INSERT INTO '''+t+'''HEADER (COLUMNATTR) VALUES(?)''',[attr])
