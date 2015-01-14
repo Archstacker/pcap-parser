@@ -16,40 +16,52 @@ contentRegex = r'(?=<--__=('+SR+r')=__-->'+header+'(.*?)(?=<--__=('+SR+r')=__-->
 def addToDB(filepath):
     f=open(filepath)
     content=f.read()
-    insDic = dict()
+    toIns = dict()
     matches=re.findall(contentRegex,content,re.DOTALL)
-    ip = re.findall('('+IR+')',matches[0][0])
-    srcInfo=[ip[0],'']
-    dstInfo=[ip[1],'']
+    host = dict((['src',dict()],['dst',dict()]))
+    [host['src']['IP'],host['dst']['IP']] = re.findall('('+IR+')',matches[0][0])
+    host['src']['data'] = ''
+    host['dst']['data'] = ''
     for mat in matches:
         if mat[0] == matches[0][0]:
-            srcInfo[1] = srcInfo[1] + mat[1]
+            host['src']['data'] = host['src']['data'] + mat[1]
         else:
-            dstInfo[1] = dstInfo[1] + mat[1]
-    try:
-        dpkt.http.Request(srcInfo[1])
-        dpkt.http.Response(dstInfo[1])
-    except:
-        pass
-    cur.execute('''SELECT SRCNUM FROM SRCHOST WHERE SRCIP = ?''',[srcInfo[0]]);
-    try:
-        srcNum=cur.fetchone()[0]
-    except TypeError:
-        cur.execute('''INSERT INTO SRCHOST(SRCIP) VALUES(?)''',[srcInfo[0]]);
-        srcNum=cur.lastrowid
-    cur.execute('''SELECT DSTNUM FROM DSTHOST WHERE DSTIP = ?''',[dstInfo[0]]);
-    try:
-        dstNum=cur.fetchone()[0]
-    except TypeError:
-        cur.execute('''INSERT INTO DSTHOST(DSTIP) VALUES(?)''',[dstInfo[0]]);
-        dstNum=cur.lastrowid
-    http = dpkt.http.Request(srcInfo[1])
-    for attr in http.headers:
-        if attr not in headerAttr:
-            cur.execute('''ALTER TABLE STREAM ADD ''' + attr.replace('-','_') + ''' CHAR(100)''')
-            headerAttr.append(attr)
+            host['dst']['data'] = host['dst']['data'] + mat[1]
+    for hostType in ['src','dst']:
+        t = hostType.upper()
+        cur.execute('SELECT '+t+'NUM FROM '+t+'HOST WHERE '+t+'IP = ?',[host[hostType]['IP']]);
+        try:
+            toIns[t+'NUM']=cur.fetchone()[0]
+        except TypeError:
+            cur.execute('INSERT INTO '+t+'HOST('+t+'IP) VALUES(?)',[host[hostType]['IP']]);
+            toIns[t+'NUM']=cur.lastrowid
+        try:
+            if(hostType=='src'):
+                http = dpkt.http.Request(host[hostType]['data'])
+            if(hostType=='dst'):
+                http = dpkt.http.Response(host[hostType]['data'])
+            for attr in http.headers:
+                if attr not in headerAttr[hostType]:
+                    cur.execute('''INSERT INTO '''+t+'''HEADER (COLUMNATTR) VALUES(?)''',[attr])
+                    colNum = cur.lastrowid
+                    headerAttr[hostType][attr]=colNum
+                    cur.execute('''ALTER TABLE STREAM ADD '''+t+'''HEADER'''+str(colNum)+''' TEXT''') 
+                toIns[t+'HEADER'+str(headerAttr[hostType][attr])]=''.join(http.headers[attr])
+            toIns[t+'BODY']=sqlite3.Binary(http.body)
+        except:
+            try:
+                toIns[hostType+'Data'] = sqlite3.Binary(host[hostType]['data'])
+            except:
+                toIns[hostType+'Data'] = ''
 
-    #cur.execute('''INSERT INTO STREAM VALUES(NULL,?,?,NULL,?,?)''',[srcNum,dstNum,sqlite3.Binary(srcInfo[1]),sqlite3.Binary(dstInfo[1])]);
+    columns = ','.join(toIns.keys())
+    placeholders = ','.join('?' * len(toIns))
+    insSql = 'INSERT INTO STREAM ({}) VALUES({})'''.format(columns, placeholders)
+    try:
+        cur.execute(insSql, toIns.values())
+    except:
+        import pdb
+        pdb.set_trace()
 
 tmpdir = tempfile.mkdtemp()
 
@@ -69,13 +81,16 @@ x = streamObj.TCP()      # // return TCP stream from PCAP to var x
 
 conn = sqlite3.connect('data.db')
 conn.row_factory = sqlite3.Row
+conn.text_factory = str
 cur = conn.cursor()
 
-cur.execute('select * from stream')
-try:
-    headerAttr = cur.fetchone().keys()
-except AttributeError:
-    headerAttr = ['ID','SRCNUM','DSTNUM','DESCRIPTION','SRCDATA','DSTDATA']
+headerAttr=dict()
+for hostType in ['src','dst']:
+    t = hostType.upper()
+    sqlResult=cur.execute('SELECT * FROM '+t+'HEADER').fetchall()
+    headerAttr[hostType] = dict()
+    for attrRow in sqlResult:
+        headerAttr[hostType][attrRow[1]] = attrRow[0]
 
 for connfile in os.listdir(tmpdir):
     addToDB(os.path.join(tmpdir,connfile))
