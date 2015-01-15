@@ -7,6 +7,7 @@ from StringIO import StringIO
 import magic
 import dpkt
 import sqlite3
+import IP
 sys.path.append("./jamaal-re-tools/tsron")
 from libtsron import Tsron 
 
@@ -36,7 +37,18 @@ def addToDB(filepath):
         try:
             toIns[t+'NUM']=cur.fetchone()[0]
         except TypeError:
-            cur.execute('INSERT INTO '+t+'HOST('+t+'IP) VALUES(?)',[host[hostType]['IP']]);
+            if(hostType=='src'):
+                cur.execute('INSERT INTO '+t+'HOST('+t+'IP) VALUES(?)',[host[hostType]['IP']]);
+            else if(hostType=='dst'):
+                dstHostInfo = dict()
+                dstHostInfo['DSTIP'] = host[hostType]['IP']
+                location = IP.find(host[hostType]['IP']).split('\t')
+                for i in range(len(location)):
+                    dstHostInfo['DSTIPLOC'+str(i)]=location[i]
+                dstHostCol = ','.join(dstHostInfo.keys())
+                dstHostHolder = ','.join('?' * len(dstHostInfo))
+                insSql = 'INSERT INTO DSTHOST ({}) VALUES({})'''.format(dstHostCol, dstHostHolder)
+                cur.execute(insSql, dstHostInfo.values())
             toIns[t+'NUM']=cur.lastrowid
         try:
             if(hostType=='src'):
