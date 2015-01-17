@@ -23,7 +23,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.initSrcHost()
         self.initDstHost()
-        #self.streamTable.setModel(self.streamListModel)
         self.initSignal()
 
     def initConstant(self):
@@ -36,11 +35,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.srcClicked = []
         self.dstClicked = []
         self.streamTableID = []
-        self.streamTableHeader = [u'序号',u'请求信息',u'返回信息', u'文件类型']
+        self.streamTableHeader = [u'请求信息',u'返回信息', u'文件类型']
+        self.headerTableHeader = ['Header', 'Data']
         self.sqlAllFromHost="""
                 select * from {0}HOST
                 order by {0}NUM
-                """
+        """
         self.sqlNeedBoldIP="""
                 SELECT {0}IP FROM {0}HOST
                 WHERE {0}NUM IN
@@ -64,9 +64,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             ORDER BY SRCNUM
         """
         self.sqlStreamBetween="""
-            SELECT ID,SRCDESCRIPTION,DSTDESCRIPTION,FILETYPE FROM STREAM
+            SELECT SRCDESCRIPTION,DSTDESCRIPTION,FILETYPE FROM STREAM
             WHERE ID IN({})
-            """
+        """
+        self.sqlStreamInfo="""
+                SELECT * FROM STREAM
+                WHERE ID={}
+        """
+        self.sqlHTTPHeader="""
+                SELECT COLUMNATTR FROM {0}HEADER 
+                WHERE COLUMNID={1}
+        """
 
     def initDB(self, dbName):
         self.conn=sqlite3.connect(dbName)
@@ -152,9 +160,44 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         tableModel = MyTableModel(self, sqlResult, self.streamTableHeader)
         self.streamTable.setModel(tableModel)
 
+    def streamClicked(self, qModelIndex):
+        for i in reversed(range(self.streamHeaders.count())):
+            self.streamHeaders.itemAt(i).widget().setParent(None)
+        rowNum = qModelIndex.row()
+        srcHeaderTable = QTableView()
+        dstHeaderTable = QTableView()
+        sqlQuery = self.sqlStreamInfo.format(self.streamTableID[rowNum])
+        sqlResult = self.rawcursor.execute(sqlQuery).fetchone()
+        srcHeaders = []
+        dstHeaders = []
+        for col in sqlResult.keys():
+            if col.startswith('SRCHEADER') and sqlResult[col] is not None:
+                singleHeader = self.cursor.execute(self.sqlHTTPHeader.format("SRC",col[9:])).fetchone()[0]
+                srcHeaders.append([singleHeader, sqlResult[col]])
+            if col.startswith('DSTHEADER') and sqlResult[col] is not None:
+                singleHeader = self.cursor.execute(self.sqlHTTPHeader.format("DST",col[9:])).fetchone()[0]
+                dstHeaders.append([singleHeader, sqlResult[col]])
+        srcTableModel = MyTableModel(self, srcHeaders, self.headerTableHeader)
+        srcHeaderTable.setModel(srcTableModel)
+        dstTableModel = MyTableModel(self, dstHeaders, self.headerTableHeader)
+        dstHeaderTable.setModel(dstTableModel)
+        if(self.streamHeaders.count() == 0):
+            self.streamHeaders.addWidget(srcHeaderTable)
+            self.streamHeaders.addWidget(dstHeaderTable)
+        else:
+            self.streamHeaders.itemAt(0).widget().deleteLater()
+            self.streamHeaders.addWidget(srcHeaderTable)
+            self.streamHeaders.itemAt(0).widget().deleteLater()
+            self.streamHeaders.addWidget(dstHeaderTable)
+
+        
+
+
+
     def initSignal(self):
         self.srcHostModel.itemChanged.connect(self.srcHostClicked)
         self.dstHostModel.itemChanged.connect(self.dstHostClicked)
+        self.streamTable.clicked.connect(self.streamClicked)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
