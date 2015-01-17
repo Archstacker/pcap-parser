@@ -1,9 +1,12 @@
+# -*- coding: utf-8 -*-
+
 import sys
 import os
 import sqlite3
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from ui_mainwindow import Ui_MainWindow
+from mytablemodel import MyTableModel
 
 def debugHere():
     from PyQt4.QtCore import pyqtRemoveInputHook
@@ -20,6 +23,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.initSrcHost()
         self.initDstHost()
+        #self.streamTable.setModel(self.streamListModel)
         self.initSignal()
 
     def initConstant(self):
@@ -31,6 +35,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.fontNormal.setWeight(175)
         self.srcClicked = []
         self.dstClicked = []
+        self.streamTableID = []
+        self.streamTableHeader = [u'序号',u'请求信息',u'返回信息', u'文件类型']
         self.sqlAllFromHost="""
                 select * from {0}HOST
                 order by {0}NUM
@@ -47,7 +53,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 )
                 ORDER BY {0}NUM
         """
-
+        self.sqlStreamIDBetween="""
+            SELECT ID FROM STREAM
+                WHERE SRCNUM IN
+                    (SELECT SRCNUM FROM SRCHOST
+                    WHERE SRCIP IN({0}))
+                AND DSTNUM IN
+                    (SELECT DSTNUM FROM DSTHOST
+                    WHERE DSTIP IN({1}))
+            ORDER BY SRCNUM
+        """
+        self.sqlStreamBetween="""
+            SELECT ID,SRCDESCRIPTION,DSTDESCRIPTION,FILETYPE FROM STREAM
+            WHERE ID IN({})
+            """
 
     def initDB(self, dbName):
         self.conn=sqlite3.connect(dbName)
@@ -97,13 +116,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             else:
                 self.dstHostModel.item(i).setFont(self.fontNormal)
             i = i + 1
+        self.updateStream()
 
     def dstHostClicked(self, item):
-        print 'enter'
         selectedIP = str(item.text())
         if (selectedIP in self.dstClicked) ^ (not item.checkState()):
             return
-        print 'here'
 
         if item.checkState():
             self.dstClicked.append(selectedIP)
@@ -118,6 +136,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             else:
                 self.srcHostModel.item(i).setFont(self.fontNormal)
             i = i + 1
+        self.updateStream()
+
+    def updateStream(self):
+        if len(self.srcClicked)==0 or len(self.dstClicked)==0 :
+            return
+        self.streamTable.setSelectionBehavior(QTableWidget.SelectRows)
+        self.streamTable.setSelectionMode(QTableWidget.SingleSelection)
+        sqlQuery = self.sqlStreamIDBetween.format('"%s"' % '","'.join(self.srcClicked) ,
+                                                '"%s"' % '","'.join(self.dstClicked) )
+        sqlResult = self.cursor.execute(sqlQuery).fetchall()
+        self.streamTableID = [str(i[0]) for i in sqlResult]
+        sqlQuery = self.sqlStreamBetween.format('"%s"' % '","'.join(self.streamTableID))
+        sqlResult = self.cursor.execute(sqlQuery).fetchall()
+        tableModel = MyTableModel(self, sqlResult, self.streamTableHeader)
+        self.streamTable.setModel(tableModel)
 
     def initSignal(self):
         self.srcHostModel.itemChanged.connect(self.srcHostClicked)

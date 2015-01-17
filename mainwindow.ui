@@ -58,19 +58,12 @@
          </widget>
         </item>
         <item>
-         <layout class="QVBoxLayout" name="verticalLayout_3">
+         <layout class="QVBoxLayout" name="mainView">
           <item>
            <widget class="QTableView" name="streamTable"/>
           </item>
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_2">
-            <item>
-             <widget class="QTableView" name="srcHeaderTable"/>
-            </item>
-            <item>
-             <widget class="QTableView" name="dstHeaderTable"/>
-            </item>
-           </layout>
+           <layout class="QHBoxLayout" name="streamHeaders"/>
           </item>
          </layout>
         </item>
