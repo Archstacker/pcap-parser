@@ -1,2 +1,5 @@
 test.pcap
 data.db
+*.pyc
+*_rc.py
+ui_*.py
