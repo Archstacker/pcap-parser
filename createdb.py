@@ -23,7 +23,7 @@ def addToDB(filepath):
     toIns = dict()
     matches=re.findall(contentRegex,content,re.DOTALL)
     host = dict((['src',dict()],['dst',dict()]))
-    [host['src']['IP'],host['dst']['IP']] = re.findall('('+IR+')',matches[0][0])
+    [host['src']['IP'],host['src']['port'],host['dst']['IP'],host['dst']['port']] = matches[0][0].split('_')
     host['src']['data'] = ''
     host['dst']['data'] = ''
     for mat in matches:
@@ -39,7 +39,7 @@ def addToDB(filepath):
         except TypeError:
             if(hostType=='src'):
                 cur.execute('INSERT INTO '+t+'HOST('+t+'IP) VALUES(?)',[host[hostType]['IP']]);
-            else if(hostType=='dst'):
+            if(hostType=='dst'):
                 dstHostInfo = dict()
                 dstHostInfo['DSTIP'] = host[hostType]['IP']
                 location = IP.find(host[hostType]['IP']).split('\t')
@@ -56,7 +56,7 @@ def addToDB(filepath):
                 toIns['SRCDESCRIPTION'] = http.method+' http://'+http.headers['host']+http.uri
             if(hostType=='dst'):
                 http = dpkt.http.Response(host[hostType]['data'])
-                toIns['DSTdESCRIPTION'] = 'HTTP/'+' '.join([http.version,http.status,http.reason])
+                toIns['DSTDESCRIPTION'] = 'HTTP/'+' '.join([http.version,http.status,http.reason])
                 if "content-encoding" in http.headers and http.headers["content-encoding"] == "gzip":
                     buf = StringIO(http.body)
                     f = gzip.GzipFile(fileobj=buf)
@@ -72,6 +72,8 @@ def addToDB(filepath):
             toIns[t+'BODY']=sqlite3.Binary(http.body)
         except dpkt.dpkt.UnpackError:
             toIns[hostType+'Data'] = sqlite3.Binary(host[hostType]['data'])
+            toIns['SRCDESCRIPTION'] = host['src']['IP']+':'+host['src']['port']
+            toIns['DSTDESCRIPTION'] = host['dst']['IP']+':'+host['dst']['port']
 
     columns = ','.join(toIns.keys())
     placeholders = ','.join('?' * len(toIns))
