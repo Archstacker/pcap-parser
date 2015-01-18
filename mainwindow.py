@@ -21,6 +21,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.initConstant()
         super(MainWindow, self).__init__(parent)
         self.setupUi(self)
+        self.srcHostList.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.dstHostList.setContextMenuPolicy(Qt.CustomContextMenu)
         self.initSrcHost()
         self.initDstHost()
         self.initSignal()
@@ -75,12 +77,37 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 SELECT COLUMNATTR FROM {0}HEADER 
                 WHERE COLUMNID={1}
         """
+        self.sqlGetNumByIP="""
+                SELECT {0}NUM FROM {0}HOST
+                WHERE {0}IP = ?
+        """
+        self.sqlDeleteIP="""
+                DELETE FROM {0}HOST 
+                WHERE {0}NUM = ?
+        """
+        self.sqlDeleteStreamByIP="""
+                DELETE FROM STREAM
+                WHERE {0}NUM = ?
+        """
+        self.sqlDeleteHost="""
+                DELETE FROM {0}HOST
+                WHERE {0}NUM NOT IN
+                (SELECT DISTINCT {0}NUM 
+                FROM STREAM)
+        """
 
     def initDB(self, dbName):
         self.conn=sqlite3.connect(dbName)
         self.cursor=self.conn.cursor()
         self.conn.row_factory = sqlite3.Row
         self.rawcursor=self.conn.cursor()
+
+    def initSignal(self):
+        self.srcHostModel.itemChanged.connect(self.srcHostClicked)
+        self.srcHostList.connect(self.srcHostList, SIGNAL('customContextMenuRequested(const QPoint &)'), self.srcHostRightClicked)
+        self.dstHostModel.itemChanged.connect(self.dstHostClicked)
+        self.dstHostList.connect(self.dstHostList, SIGNAL('customContextMenuRequested(const QPoint &)'), self.dstHostRightClicked)
+        self.streamTable.clicked.connect(self.streamClicked)
 
     def initSrcHost(self):
         self.srcHostModel = QStandardItemModel(self.srcHostList)
@@ -190,14 +217,67 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.streamHeaders.itemAt(0).widget().deleteLater()
             self.streamHeaders.addWidget(dstHeaderTable)
 
-        
+    def srcHostRightClicked(self, point):
+        self.srcHostListMenu = QMenu()
+        menuItem = self.srcHostListMenu.addAction("Delete")
+        self.connect(menuItem, SIGNAL("triggered()"), self.srcHostItemClicked) 
+        self.srcHostListMenu.move(QCursor.pos())
+        self.srcHostListMenu.show()
 
+    def dstHostRightClicked(self, point):
+        self.dstHostListMenu = QMenu()
+        menuItem = self.dstHostListMenu.addAction("Delete")
+        self.connect(menuItem, SIGNAL("triggered()"), self.dstHostItemClicked) 
+        self.dstHostListMenu.move(QCursor.pos())
+        self.dstHostListMenu.show()
 
+    def srcHostItemClicked(self):
+        toDeleteItem = self.srcHostModel.item(self.srcHostList.currentIndex().row())
+        toDeleteIP = toDeleteItem.text()
+        if toDeleteItem.checkState() == Qt.Checked:
+            self.srcClicked.pop(self.srcClicked.index(toDeleteIP))
+        sqlQuery = self.sqlGetNumByIP.format("SRC")
+        num = self.cursor.execute(sqlQuery, [str(toDeleteIP)]).fetchone()[0]
+        sqlQuery = self.sqlDeleteIP.format("SRC")
+        self.cursor.execute(sqlQuery, [num])
+        sqlQuery = self.sqlDeleteStreamByIP.format("SRC")
+        self.cursor.execute(sqlQuery, [num])
+        sqlQuery = self.sqlDeleteHost.format("DST")
+        self.cursor.execute(sqlQuery)
+        self.conn.commit()
+        self.updateHosts()
 
-    def initSignal(self):
-        self.srcHostModel.itemChanged.connect(self.srcHostClicked)
-        self.dstHostModel.itemChanged.connect(self.dstHostClicked)
-        self.streamTable.clicked.connect(self.streamClicked)
+    def dstHostItemClicked(self):
+        toDeleteItem = self.dstHostModel.item(self.dstHostList.currentIndex().row())
+        toDeleteIP = toDeleteItem.text()
+        if toDeleteItem.checkState() == Qt.Checked:
+            self.dstClicked.pop(self.dstClicked.index(toDeleteIP))
+        sqlQuery = self.sqlGetNumByIP.format("DST")
+        num = self.cursor.execute(sqlQuery, [str(toDeleteIP)]).fetchone()[0]
+        sqlQuery = self.sqlDeleteIP.format("DST")
+        self.cursor.execute(sqlQuery, [num])
+        sqlQuery = self.sqlDeleteStreamByIP.format("DST")
+        self.cursor.execute(sqlQuery, [num])
+        sqlQuery = self.sqlDeleteHost.format("SRC")
+        self.cursor.execute(sqlQuery)
+        self.conn.commit()
+        self.updateHosts()
+
+    def updateHosts(self):
+        self.initSrcHost()
+        self.initDstHost()
+        toClickedList = self.srcClicked
+        self.srcClicked = []
+        for i in toClickedList:
+            toClickedItem = self.srcHostList.model().findItems(i)[0]
+            toClickedItem.setCheckState(Qt.Checked)
+            self.srcHostClicked(toClickedItem)
+        toClickedList = self.dstClicked
+        self.dstClicked = []
+        for i in toClickedList:
+            toClickedItem = self.dstHostList.model().findItems(i)[0]
+            toClickedItem.setCheckState(Qt.Checked)
+            self.dstHostClicked(toClickedItem)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
