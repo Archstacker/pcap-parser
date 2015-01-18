@@ -3,6 +3,7 @@
 import sys
 import os
 import sqlite3
+import hexdump
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from ui_mainwindow import Ui_MainWindow
@@ -204,29 +205,44 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def streamClicked(self, qModelIndex):
         rowNum = qModelIndex.row()
-        srcHeaderTable = QTableView()
-        dstHeaderTable = QTableView()
         sqlQuery = self.sqlStreamInfo.format(self.streamTableID[rowNum])
         sqlResult = self.rawcursor.execute(sqlQuery).fetchone()
-        srcHeaders = []
-        dstHeaders = []
-        for col in sqlResult.keys():
-            if col.startswith('SRCHEADER') and sqlResult[col] is not None:
-                singleHeader = self.cursor.execute(self.sqlHTTPHeader.format("SRC",col[9:])).fetchone()[0]
-                srcHeaders.append([singleHeader, sqlResult[col]])
-            if col.startswith('DSTHEADER') and sqlResult[col] is not None:
-                singleHeader = self.cursor.execute(self.sqlHTTPHeader.format("DST",col[9:])).fetchone()[0]
-                dstHeaders.append([singleHeader, sqlResult[col]])
-        srcTableModel = MyTableModel(self, srcHeaders, self.headerTableHeader)
-        srcHeaderTable.setModel(srcTableModel)
-        dstTableModel = MyTableModel(self, dstHeaders, self.headerTableHeader)
-        dstHeaderTable.setModel(dstTableModel)
-        if(self.streamHeaders.count() == 0):
-            self.streamHeaders.addWidget(srcHeaderTable)
-            self.streamHeaders.addWidget(dstHeaderTable)
+        if(sqlResult['SRCDATA'] is None):
+            srcDetailTable = QTableView()
+            srcHeaders = []
+            for col in sqlResult.keys():
+                if col.startswith('SRCHEADER') and sqlResult[col] is not None:
+                    singleHeader = self.cursor.execute(self.sqlHTTPHeader.format("SRC",col[9:])).fetchone()[0]
+                    srcHeaders.append([singleHeader, sqlResult[col]])
+            srcHeaders.append(['Data',sqlResult['SRCBODY']])
+            srcTableModel = MyTableModel(self, srcHeaders, self.headerTableHeader)
+            srcDetailTable.setModel(srcTableModel)
         else:
-            self.streamHeaders.addWidget(srcHeaderTable)
-            self.streamHeaders.addWidget(dstHeaderTable)
+            srcDetailTable = QPlainTextEdit()
+            srcDetailTable.setLineWrapMode(QPlainTextEdit.NoWrap)
+            srcDetailTable.setReadOnly(True)
+            srcDetailTable.insertPlainText(hexdump.hexdump(sqlResult['SRCDATA'],result='return'))
+        if(sqlResult['DSTDATA'] is None):
+            dstDetailTable = QTableView()
+            dstHeaders = []
+            for col in sqlResult.keys():
+                if col.startswith('DSTHEADER') and sqlResult[col] is not None:
+                    singleHeader = self.cursor.execute(self.sqlHTTPHeader.format("DST",col[9:])).fetchone()[0]
+                    dstHeaders.append([singleHeader, sqlResult[col]])
+            dstHeaders.append(['Data',sqlResult['DSTBODY']])
+            dstTableModel = MyTableModel(self, dstHeaders, self.headerTableHeader)
+            dstDetailTable.setModel(dstTableModel)
+        else:
+            dstDetailTable = QPlainTextEdit()
+            dstDetailTable.setLineWrapMode(QPlainTextEdit.NoWrap)
+            dstDetailTable.setReadOnly(True)
+            dstDetailTable.insertPlainText(hexdump.hexdump(sqlResult['DSTDATA'],result='return'))
+        if(self.streamHeaders.count() == 0):
+            self.streamHeaders.addWidget(srcDetailTable)
+            self.streamHeaders.addWidget(dstDetailTable)
+        else:
+            self.streamHeaders.addWidget(srcDetailTable)
+            self.streamHeaders.addWidget(dstDetailTable)
             self.streamHeaders.itemAt(0).widget().setParent(None)
             self.streamHeaders.itemAt(0).widget().setParent(None)
 
