@@ -143,8 +143,7 @@
    </attribute>
    <addaction name="actionDBOpen"/>
    <addaction name="actionFileSave"/>
-   <addaction name="separator"/>
-   <addaction name="action_6"/>
+   <addaction name="actionPreview"/>
    <addaction name="separator"/>
    <addaction name="action_7"/>
   </widget>
@@ -192,13 +191,13 @@
     <string>升级</string>
    </property>
   </action>
-  <action name="action_6">
+  <action name="actionPreview">
    <property name="icon">
     <iconset resource="ico.qrc">
-     <normaloff>:/icon/icon/edit.png</normaloff>:/icon/icon/edit.png</iconset>
+     <normaloff>:/icon/icon/stat.png</normaloff>:/icon/icon/stat.png</iconset>
    </property>
    <property name="text">
-    <string>编辑</string>
+    <string>预览(&amp;P)</string>
    </property>
   </action>
   <action name="action_7">

@@ -1,9 +1,12 @@
+#!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 
 import sys
 import os
 import sqlite3
 import hexdump
+import tempfile
+import subprocess
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from ui_mainwindow import Ui_MainWindow
@@ -103,6 +106,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 (SELECT DISTINCT {0}NUM 
                 FROM STREAM)
         """
+        self.sqlGetItemData="""
+                SELECT DSTBODY FROM STREAM
+                WHERE ID = ?
+        """
 
     def initDB(self, dbName):
         try:
@@ -117,6 +124,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def initSignal(self):
         self.actionDBOpen.triggered.connect(self.DBOpen)
         self.actionFileSave.triggered.connect(self.fileSave)
+        self.actionPreview.triggered.connect(self.itemPreview)
         self.srcHostList.connect(self.srcHostList, SIGNAL('customContextMenuRequested(const QPoint &)'), self.srcHostRightClicked)
         self.dstHostList.connect(self.dstHostList, SIGNAL('customContextMenuRequested(const QPoint &)'), self.dstHostRightClicked)
         self.streamTable.clicked.connect(self.streamClicked)
@@ -308,6 +316,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def fileSave(self):
         self.conn.commit()
+
+    def itemPreview(self):
+        currentID = self.streamTableID[self.streamTable.currentIndex().row()]
+        sqlResult = self.cursor.execute(self.sqlGetItemData,[currentID]).fetchone()[0]
+        tmp = tempfile.mktemp()
+        f = open(tmp,"w")
+        f.write(sqlResult)
+        f.close()
+        subprocess.call(["xdg-open", tmp])
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
