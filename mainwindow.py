@@ -73,6 +73,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     WHERE DSTIP IN({1}))
             ORDER BY SRCNUM
         """
+        self.sqlStreamIDSingle="""
+            SELECT ID FROM STREAM
+                WHERE {0}NUM IN
+                    (SELECT {0}NUM FROM {0}HOST
+                    WHERE {0}IP IN({1}))
+        """
         self.sqlStreamBetween="""
             SELECT SRCDESCRIPTION,DSTDESCRIPTION,FILETYPE FROM STREAM
             WHERE ID IN({})
@@ -199,8 +205,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if(self.streamHeaders.itemAt(0) != None):
             self.streamHeaders.itemAt(0).widget().setParent(None)
             self.streamHeaders.itemAt(0).widget().setParent(None)
-        if len(self.srcClicked)==0 or len(self.dstClicked)==0 :
+        if len(self.srcClicked)==0 and len(self.dstClicked)==0 :
             sqlQuery = self.sqlStreamIDAll
+        elif len(self.srcClicked)!=0 and len(self.dstClicked)==0 :
+            sqlQuery = self.sqlStreamIDSingle.format("SRC", '"%s"' % '","'.join(self.srcClicked))
+        elif len(self.dstClicked)!=0 and len(self.srcClicked)==0 :
+            sqlQuery = self.sqlStreamIDSingle.format("DST", '"%s"' % '","'.join(self.dstClicked))
         else:
             sqlQuery = self.sqlStreamIDBetween.format('"%s"' % '","'.join(self.srcClicked) ,
                                                     '"%s"' % '","'.join(self.dstClicked) )
