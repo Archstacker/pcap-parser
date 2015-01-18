@@ -11,6 +11,7 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from ui_mainwindow import Ui_MainWindow
 from mytablemodel import MyTableModel
+import createdb
 
 def debugHere():
     from PyQt4.QtCore import pyqtRemoveInputHook
@@ -25,6 +26,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.initConstant()
         self.initSignal()
+
+    def pcapImport(self):
+        pcapPath = QFileDialog.getOpenFileName(self,
+                "Open Pcap",".",
+                "Pcap File (*.pcap)");
+        dbPath = createdb.createDB(pcapPath)
+        self.initDB(str(path))
+        self.srcClicked = []
+        self.dstClicked = []
+        self.streamTableID = []
+        self.initSrcHost()
+        self.initDstHost()
+        self.updateStream()
 
     def DBOpen(self):
         path = QFileDialog.getOpenFileName(self,
@@ -128,6 +142,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.rawcursor=self.conn.cursor()
 
     def initSignal(self):
+        self.actionImport.triggered.connect(self.pcapImport)
         self.actionDBOpen.triggered.connect(self.DBOpen)
         self.actionFileSave.triggered.connect(self.fileSave)
         self.actionPreview.triggered.connect(self.itemPreview)

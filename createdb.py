@@ -17,7 +17,9 @@ IR = r'[0-9]{1,3}(?:\.[0-9]{1,3}){3}'
 PR = r'[0-9]{1,5}'
 SR = IR+'_'+PR+'_'+IR+'_'+PR
 contentRegex = r'(?=<--__=('+SR+r')=__-->'+header+'(.*?)(?=<--__=('+SR+r')=__-->'+header+'|\Z))'
-def addToDB(filepath):
+def addToDB(filepath,cur,headerAttr):
+    mag = magic.open(magic.MAGIC_NONE)
+    mag.load()
     f=open(filepath)
     content=f.read()
     toIns = dict()
@@ -84,37 +86,40 @@ def addToDB(filepath):
         import pdb
         pdb.set_trace()
 
-tmpdir = tempfile.mkdtemp()
-mag = magic.open(magic.MAGIC_NONE)
-mag.load()
-
-# // targs 
-targs = {
-'typestream': 'TCP',     # // TCP, UDP or GRE 
-'header': header,            # // delimit each packet with a user defined header  
-'srcpcap': "test.pcap", 	 # // File name of pcap 
-'streamnum': 0,          # // 0 stream means all streams
-'display': False,        # // Display stream stats 
-'outdir': tmpdir,          # // output directory to write streams, if not, return streams to variable 
-'connheader': True      # // Include connection flow information as apart of the header 
-}
-
-streamObj=Tsron(**targs) # // create instance of Tsron 
-x = streamObj.TCP()      # // return TCP stream from PCAP to var x 
-
-conn = sqlite3.connect('data.db')
-conn.row_factory = sqlite3.Row
-conn.text_factory = str
-cur = conn.cursor()
-
-headerAttr=dict()
-for hostType in ['src','dst']:
-    t = hostType.upper()
-    sqlResult=cur.execute('SELECT * FROM '+t+'HEADER').fetchall()
-    headerAttr[hostType] = dict()
-    for attrRow in sqlResult:
-        headerAttr[hostType][attrRow[1]] = attrRow[0]
-
-for connfile in os.listdir(tmpdir):
-    addToDB(os.path.join(tmpdir,connfile))
-conn.commit()
+def createDB(pcapPath):
+    tmpdir = tempfile.mkdtemp()
+    tmpdb = tempfile.mktemp()
+    os.system("sqlite3 {} < command.sql".format(tmpdb))
+    
+    # // targs 
+    targs = {
+    'typestream': 'TCP',     # // TCP, UDP or GRE 
+    'header': header,            # // delimit each packet with a user defined header  
+    'srcpcap': pcapPath, 	 # // File name of pcap 
+    'streamnum': 0,          # // 0 stream means all streams
+    'display': False,        # // Display stream stats 
+    'outdir': tmpdir,          # // output directory to write streams, if not, return streams to variable 
+    'connheader': True      # // Include connection flow information as apart of the header 
+    }
+    
+    streamObj=Tsron(**targs) # // create instance of Tsron 
+    x = streamObj.TCP()      # // return TCP stream from PCAP to var x 
+    
+    conn = sqlite3.connect(tmpdb)
+    conn.row_factory = sqlite3.Row
+    conn.text_factory = str
+    cur = conn.cursor()
+    
+    headerAttr=dict()
+    for hostType in ['src','dst']:
+        t = hostType.upper()
+        sqlResult=cur.execute('SELECT * FROM '+t+'HEADER').fetchall()
+        headerAttr[hostType] = dict()
+        for attrRow in sqlResult:
+            headerAttr[hostType][attrRow[1]] = attrRow[0]
+    
+    for connfile in os.listdir(tmpdir):
+        addToDB(os.path.join(tmpdir,connfile),cur,headerAttr)
+    conn.commit()
+    conn.close()
+    return tmpdb

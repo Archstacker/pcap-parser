@@ -112,7 +112,6 @@
     <property name="title">
      <string>操作</string>
     </property>
-    <addaction name="action_2"/>
     <addaction name="action_4"/>
    </widget>
    <widget class="QMenu" name="menu_3">
@@ -141,6 +140,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="actionImport"/>
    <addaction name="actionDBOpen"/>
    <addaction name="actionFileSave"/>
    <addaction name="actionPreview"/>
@@ -176,9 +176,13 @@
     <string>关于</string>
    </property>
   </action>
-  <action name="action_2">
+  <action name="actionImport">
+   <property name="icon">
+    <iconset resource="ico.qrc">
+     <normaloff>:/icon/icon/editadd.png</normaloff>:/icon/icon/editadd.png</iconset>
+   </property>
    <property name="text">
-    <string>导入</string>
+    <string>导入(&amp;I)</string>
    </property>
   </action>
   <action name="action_4">
