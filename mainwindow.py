@@ -7,6 +7,7 @@ import sqlite3
 import hexdump
 import tempfile
 import subprocess
+import shutil
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from ui_mainwindow import Ui_MainWindow
@@ -31,8 +32,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         pcapPath = QFileDialog.getOpenFileName(self,
                 "Open Pcap",".",
                 "Pcap File (*.pcap)");
-        dbPath = createdb.createDB(pcapPath)
-        self.initDB(str(path))
+        self.dbPath = createdb.createDB(pcapPath)
+        self.initDB(str(self.dbPath))
         self.srcClicked = []
         self.dstClicked = []
         self.streamTableID = []
@@ -145,6 +146,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.actionImport.triggered.connect(self.pcapImport)
         self.actionDBOpen.triggered.connect(self.DBOpen)
         self.actionFileSave.triggered.connect(self.fileSave)
+        self.actionFileSaveAs.triggered.connect(self.fileSaveAs)
         self.actionPreview.triggered.connect(self.itemPreview)
         self.srcHostList.connect(self.srcHostList, SIGNAL('customContextMenuRequested(const QPoint &)'), self.srcHostRightClicked)
         self.dstHostList.connect(self.dstHostList, SIGNAL('customContextMenuRequested(const QPoint &)'), self.dstHostRightClicked)
@@ -341,6 +343,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def fileSave(self):
         self.conn.commit()
+
+    def fileSaveAs(self):
+        self.conn.commit()
+        dbPathNew = QFileDialog.getSaveFileName(self,
+                "Save As",".",
+                "Sqlite Database (*.db)");
+        shutil.copy2(self.dbPath,dbPathNew)
 
     def itemPreview(self):
         currentID = self.streamTableID[self.streamTable.currentIndex().row()]

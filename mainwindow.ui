@@ -112,7 +112,6 @@
     <property name="title">
      <string>操作</string>
     </property>
-    <addaction name="action_4"/>
    </widget>
    <widget class="QMenu" name="menu_3">
     <property name="title">
@@ -143,6 +142,7 @@
    <addaction name="actionImport"/>
    <addaction name="actionDBOpen"/>
    <addaction name="actionFileSave"/>
+   <addaction name="actionFileSaveAs"/>
    <addaction name="actionPreview"/>
    <addaction name="separator"/>
    <addaction name="action_7"/>
@@ -185,9 +185,13 @@
     <string>导入(&amp;I)</string>
    </property>
   </action>
-  <action name="action_4">
+  <action name="actionFileSaveAs">
+   <property name="icon">
+    <iconset resource="ico.qrc">
+     <normaloff>:/icon/icon/filesaveas.png</normaloff>:/icon/icon/filesaveas.png</iconset>
+   </property>
    <property name="text">
-    <string>导出</string>
+    <string>另存(&amp;A)</string>
    </property>
   </action>
   <action name="action_5">
