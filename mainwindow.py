@@ -115,6 +115,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def initSignal(self):
         self.actionDBOpen.triggered.connect(self.DBOpen)
+        self.actionFileSave.triggered.connect(self.fileSave)
         self.srcHostList.connect(self.srcHostList, SIGNAL('customContextMenuRequested(const QPoint &)'), self.srcHostRightClicked)
         self.dstHostList.connect(self.dstHostList, SIGNAL('customContextMenuRequested(const QPoint &)'), self.dstHostRightClicked)
         self.streamTable.clicked.connect(self.streamClicked)
@@ -256,7 +257,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.cursor.execute(sqlQuery, [num])
         sqlQuery = self.sqlDeleteHost.format("DST")
         self.cursor.execute(sqlQuery)
-        self.conn.commit()
         self.updateHosts()
 
     def dstHostItemClicked(self):
@@ -272,7 +272,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.cursor.execute(sqlQuery, [num])
         sqlQuery = self.sqlDeleteHost.format("SRC")
         self.cursor.execute(sqlQuery)
-        self.conn.commit()
         self.updateHosts()
 
     def updateHosts(self):
@@ -290,6 +289,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             toClickedItem = self.dstHostList.model().findItems(i)[0]
             toClickedItem.setCheckState(Qt.Checked)
             self.dstHostClicked(toClickedItem)
+
+    def fileSave(self):
+        self.conn.commit()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

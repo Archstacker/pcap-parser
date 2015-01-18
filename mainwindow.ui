@@ -142,7 +142,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionDBOpen"/>
-   <addaction name="action_1"/>
+   <addaction name="actionFileSave"/>
    <addaction name="separator"/>
    <addaction name="action_6"/>
    <addaction name="separator"/>
@@ -153,16 +153,16 @@
     <string>退出</string>
    </property>
   </action>
-  <action name="action_1">
+  <action name="actionFileSave">
    <property name="icon">
     <iconset resource="ico.qrc">
-     <normaloff>:/icon/icon/query.png</normaloff>:/icon/icon/query.png</iconset>
+     <normaloff>:/icon/icon/filesave.png</normaloff>:/icon/icon/filesave.png</iconset>
    </property>
    <property name="text">
-    <string>查找(&amp;F)</string>
+    <string>保存(&amp;S)</string>
    </property>
    <property name="iconText">
-    <string>查找(F)</string>
+    <string>保存(S)</string>
    </property>
    <property name="softKeyRole">
     <enum>QAction::NoSoftKey</enum>
@@ -221,7 +221,7 @@
      <normaloff>:/icon/icon/fileopen.png</normaloff>:/icon/icon/fileopen.png</iconset>
    </property>
    <property name="text">
-    <string>打开</string>
+    <string>打开(&amp;O)</string>
    </property>
   </action>
  </widget>

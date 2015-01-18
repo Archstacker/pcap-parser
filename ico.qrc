@@ -11,5 +11,6 @@
     <file>icon/stat.png</file>
     <file>icon/editadd.png</file>
     <file>icon/fileopen.png</file>
+    <file>icon/filesave.png</file>
   </qresource>
 </RCC>
