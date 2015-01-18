@@ -52,6 +52,9 @@
             <bold>true</bold>
            </font>
           </property>
+          <property name="contextMenuPolicy">
+           <enum>Qt::CustomContextMenu</enum>
+          </property>
           <property name="styleSheet">
            <string notr="true"/>
           </property>
@@ -60,7 +63,11 @@
         <item>
          <layout class="QVBoxLayout" name="mainView">
           <item>
-           <widget class="QTableView" name="streamTable"/>
+           <widget class="QTableView" name="streamTable">
+            <property name="selectionBehavior">
+             <enum>QAbstractItemView::SelectRows</enum>
+            </property>
+           </widget>
           </item>
           <item>
            <layout class="QHBoxLayout" name="streamHeaders"/>
@@ -74,6 +81,9 @@
             <width>200</width>
             <height>16777215</height>
            </size>
+          </property>
+          <property name="contextMenuPolicy">
+           <enum>Qt::CustomContextMenu</enum>
           </property>
          </widget>
         </item>
@@ -131,6 +141,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="actionDBOpen"/>
    <addaction name="action_1"/>
    <addaction name="separator"/>
    <addaction name="action_6"/>
@@ -197,6 +208,20 @@
    </property>
    <property name="text">
     <string>退出</string>
+   </property>
+  </action>
+  <action name="action_8">
+   <property name="text">
+    <string>打开</string>
+   </property>
+  </action>
+  <action name="actionDBOpen">
+   <property name="icon">
+    <iconset resource="ico.qrc">
+     <normaloff>:/icon/icon/fileopen.png</normaloff>:/icon/icon/fileopen.png</iconset>
+   </property>
+   <property name="text">
+    <string>打开</string>
    </property>
   </action>
  </widget>

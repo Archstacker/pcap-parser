@@ -9,5 +9,7 @@
     <file>icon/print.png</file>
     <file>icon/query.png</file>
     <file>icon/stat.png</file>
+    <file>icon/editadd.png</file>
+    <file>icon/fileopen.png</file>
   </qresource>
 </RCC>

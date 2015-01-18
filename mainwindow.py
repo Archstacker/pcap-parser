@@ -17,15 +17,22 @@ def debugHere():
 class MainWindow(QMainWindow, Ui_MainWindow):
 
     def __init__(self, parent=None):
-        self.initDB("data.db")
-        self.initConstant()
         super(MainWindow, self).__init__(parent)
         self.setupUi(self)
-        self.srcHostList.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.dstHostList.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.initConstant()
+        self.initSignal()
+
+    def DBOpen(self):
+        path = QFileDialog.getOpenFileName(self,
+                "Open Database",".",
+                "Sqlite Database (*.db)");
+        self.initDB(str(path))
+        self.srcClicked = []
+        self.dstClicked = []
+        self.streamTableID = []
         self.initSrcHost()
         self.initDstHost()
-        self.initSignal()
+        self.updateStream()
 
     def initConstant(self):
         self.fontBold = QFont()
@@ -34,9 +41,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.fontNormal = QFont()
         self.fontNormal.setBold(False)
         self.fontNormal.setWeight(175)
-        self.srcClicked = []
-        self.dstClicked = []
-        self.streamTableID = []
         self.streamTableHeader = [u'请求信息',u'返回信息', u'文件类型']
         self.headerTableHeader = ['Header', 'Data']
         self.sqlAllFromHost="""
@@ -69,6 +73,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             SELECT SRCDESCRIPTION,DSTDESCRIPTION,FILETYPE FROM STREAM
             WHERE ID IN({})
         """
+        self.sqlStreamIDAll="""
+            SELECT ID FROM STREAM
+        """
         self.sqlStreamInfo="""
                 SELECT * FROM STREAM
                 WHERE ID={}
@@ -97,15 +104,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
 
     def initDB(self, dbName):
+        try:
+            self.conn.close()
+        except:
+            pass
         self.conn=sqlite3.connect(dbName)
         self.cursor=self.conn.cursor()
         self.conn.row_factory = sqlite3.Row
         self.rawcursor=self.conn.cursor()
 
     def initSignal(self):
-        self.srcHostModel.itemChanged.connect(self.srcHostClicked)
+        self.actionDBOpen.triggered.connect(self.DBOpen)
         self.srcHostList.connect(self.srcHostList, SIGNAL('customContextMenuRequested(const QPoint &)'), self.srcHostRightClicked)
-        self.dstHostModel.itemChanged.connect(self.dstHostClicked)
         self.dstHostList.connect(self.dstHostList, SIGNAL('customContextMenuRequested(const QPoint &)'), self.dstHostRightClicked)
         self.streamTable.clicked.connect(self.streamClicked)
 
@@ -119,6 +129,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             item.setCheckable(True)
             item.setFont(self.fontNormal)
             self.srcHostModel.appendRow(item)
+        self.srcHostModel.itemChanged.connect(self.srcHostClicked)
         self.srcHostList.setModel(self.srcHostModel)
 
     def initDstHost(self):
@@ -131,6 +142,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             item.setCheckable(True)
             item.setFont(self.fontNormal)
             self.dstHostModel.appendRow(item)
+        self.dstHostModel.itemChanged.connect(self.dstHostClicked)
         self.dstHostList.setModel(self.dstHostModel)
 
     def srcHostClicked(self, item):
@@ -174,12 +186,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.updateStream()
 
     def updateStream(self):
+        if(self.streamHeaders.itemAt(0) != None):
+            self.streamHeaders.itemAt(0).widget().setParent(None)
+            self.streamHeaders.itemAt(0).widget().setParent(None)
         if len(self.srcClicked)==0 or len(self.dstClicked)==0 :
-            return
-        self.streamTable.setSelectionBehavior(QTableWidget.SelectRows)
-        self.streamTable.setSelectionMode(QTableWidget.SingleSelection)
-        sqlQuery = self.sqlStreamIDBetween.format('"%s"' % '","'.join(self.srcClicked) ,
-                                                '"%s"' % '","'.join(self.dstClicked) )
+            sqlQuery = self.sqlStreamIDAll
+        else:
+            sqlQuery = self.sqlStreamIDBetween.format('"%s"' % '","'.join(self.srcClicked) ,
+                                                    '"%s"' % '","'.join(self.dstClicked) )
         sqlResult = self.cursor.execute(sqlQuery).fetchall()
         self.streamTableID = [str(i[0]) for i in sqlResult]
         sqlQuery = self.sqlStreamBetween.format('"%s"' % '","'.join(self.streamTableID))
@@ -188,8 +202,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.streamTable.setModel(tableModel)
 
     def streamClicked(self, qModelIndex):
-        for i in reversed(range(self.streamHeaders.count())):
-            self.streamHeaders.itemAt(i).widget().setParent(None)
         rowNum = qModelIndex.row()
         srcHeaderTable = QTableView()
         dstHeaderTable = QTableView()
@@ -212,10 +224,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.streamHeaders.addWidget(srcHeaderTable)
             self.streamHeaders.addWidget(dstHeaderTable)
         else:
-            self.streamHeaders.itemAt(0).widget().deleteLater()
             self.streamHeaders.addWidget(srcHeaderTable)
-            self.streamHeaders.itemAt(0).widget().deleteLater()
             self.streamHeaders.addWidget(dstHeaderTable)
+            self.streamHeaders.itemAt(0).widget().setParent(None)
+            self.streamHeaders.itemAt(0).widget().setParent(None)
 
     def srcHostRightClicked(self, point):
         self.srcHostListMenu = QMenu()
